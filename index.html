@@ -264,25 +264,25 @@
       <div class="lbl">Leads Generated</div>
       <div class="val">3,842</div>
       <div class="delta up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>18.4% <span class="vs">vs prior period</span></div>
-      <div class="gauge-wrap"><svg class="gauge" id="gaugeLeads" viewBox="0 0 160 96"></svg></div>
+      <div class="gauge-wrap"><svg class="gauge" id="gaugeLeads" viewBox="0 0 160 100" width="160" height="100"></svg></div>
     </div>
     <div class="kpi">
       <div class="lbl">MQLs</div>
       <div class="val">1,120</div>
       <div class="delta up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>9.7% <span class="vs">vs prior period</span></div>
-      <div class="gauge-wrap"><svg class="gauge" id="gaugeMqls" viewBox="0 0 160 96"></svg></div>
+      <div class="gauge-wrap"><svg class="gauge" id="gaugeMqls" viewBox="0 0 160 100" width="160" height="100"></svg></div>
     </div>
     <div class="kpi">
       <div class="lbl">Opportunities</div>
       <div class="val">214</div>
       <div class="delta down"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>3.1% <span class="vs">vs prior period</span></div>
-      <div class="gauge-wrap"><svg class="gauge" id="gaugeOpps" viewBox="0 0 160 96"></svg></div>
+      <div class="gauge-wrap"><svg class="gauge" id="gaugeOpps" viewBox="0 0 160 100" width="160" height="100"></svg></div>
     </div>
     <div class="kpi">
       <div class="lbl">Pipeline Generated</div>
       <div class="val">$4.8M</div>
       <div class="delta up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>22.6% <span class="vs">vs prior period</span></div>
-      <div class="gauge-wrap"><svg class="gauge" id="gaugePipeline" viewBox="0 0 160 96"></svg></div>
+      <div class="gauge-wrap"><svg class="gauge" id="gaugePipeline" viewBox="0 0 160 100" width="160" height="100"></svg></div>
     </div>
     <div class="kpi">
       <div class="lbl">Campaign ROI</div>
@@ -851,19 +851,27 @@
       var a = angleDeg * Math.PI / 180;
       return { x: cx + r*Math.cos(a), y: cy - r*Math.sin(a) };
     }
-    function arcPath(cx, cy, r, a0, a1){
-      var p0 = polar(cx,cy,r,a0), p1 = polar(cx,cy,r,a1);
-      var large = Math.abs(a0-a1) > 180 ? 1 : 0;
-      return 'M'+p0.x+','+p0.y+' A'+r+','+r+' 0 '+large+' 0 '+p1.x+','+p1.y;
-    }
     // value fraction (0..1) -> angle: 0 => 180deg (left), 1 => 0deg (right)
     function angleFor(frac){ return 180 - (frac*180); }
+
+    // Build the arc as a sampled polyline (no SVG arc sweep/large-arc flags involved at all).
+    function arcPathPoints(cx, cy, r, a0, a1, steps){
+      var d = '';
+      for (var i=0;i<=steps;i++){
+        var t = a0 + (a1-a0) * (i/steps);
+        var p = polar(cx,cy,r,t);
+        d += (i===0 ? 'M' : 'L') + p.x.toFixed(2) + ',' + p.y.toFixed(2) + ' ';
+      }
+      return d;
+    }
 
     function buildGauge(id, opts){
       var svg = document.getElementById(id);
       if (!svg) return;
-      var cx = 80, cy = 82, r = 62, bandW = 13;
-      var min = 0, max = opts.max, target = opts.target, actual = opts.actual;
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+      var cx = 80, cy = 76, r = 58, bandW = 14;
+      var max = opts.max, target = opts.target, actual = opts.actual;
 
       var redEnd = opts.redEnd, yellowEnd = opts.yellowEnd;
       var bands = [
@@ -874,28 +882,30 @@
       bands.forEach(function(b){
         var a0 = angleFor(b.from/max), a1 = angleFor(b.to/max);
         var path = document.createElementNS(ns,'path');
-        path.setAttribute('d', arcPath(cx,cy,r,a0,a1));
+        path.setAttribute('d', arcPathPoints(cx,cy,r,a0,a1,24));
         path.setAttribute('fill','none');
         path.setAttribute('stroke', b.color);
         path.setAttribute('stroke-width', bandW);
+        path.setAttribute('stroke-linecap','butt');
         svg.appendChild(path);
       });
 
-      // target tick
+      // target tick — a short radial line crossing the band
       var tFrac = Math.min(target/max, 1);
       var tAngle = angleFor(tFrac);
-      var t0 = polar(cx,cy,r-bandW/2-3,tAngle);
-      var t1 = polar(cx,cy,r+bandW/2+3,tAngle);
+      var t0 = polar(cx,cy,r-bandW/2-4,tAngle);
+      var t1 = polar(cx,cy,r+bandW/2+4,tAngle);
       var tick = document.createElementNS(ns,'line');
       tick.setAttribute('x1',t0.x); tick.setAttribute('y1',t0.y);
       tick.setAttribute('x2',t1.x); tick.setAttribute('y2',t1.y);
       tick.setAttribute('stroke','#181818'); tick.setAttribute('stroke-width','2.5');
+      tick.setAttribute('stroke-linecap','round');
       svg.appendChild(tick);
 
       // needle
       var aFrac = Math.min(actual/max, 1);
       var nAngle = angleFor(aFrac);
-      var tip = polar(cx,cy,r-bandW/2-2,nAngle);
+      var tip = polar(cx,cy,r-bandW/2-3,nAngle);
       var needle = document.createElementNS(ns,'line');
       needle.setAttribute('x1',cx); needle.setAttribute('y1',cy);
       needle.setAttribute('x2',tip.x); needle.setAttribute('y2',tip.y);
@@ -908,18 +918,18 @@
 
       // labels: min / max
       var minLbl = document.createElementNS(ns,'text');
-      minLbl.setAttribute('x', cx-r-4); minLbl.setAttribute('y', cy+14);
+      minLbl.setAttribute('x', cx-r-bandW/2); minLbl.setAttribute('y', cy+16);
       minLbl.setAttribute('font-size','9'); minLbl.setAttribute('fill','#706E6B'); minLbl.setAttribute('text-anchor','start');
       minLbl.textContent = opts.minLabel || '0';
       svg.appendChild(minLbl);
       var maxLbl = document.createElementNS(ns,'text');
-      maxLbl.setAttribute('x', cx+r+4); maxLbl.setAttribute('y', cy+14);
+      maxLbl.setAttribute('x', cx+r+bandW/2); maxLbl.setAttribute('y', cy+16);
       maxLbl.setAttribute('font-size','9'); maxLbl.setAttribute('fill','#706E6B'); maxLbl.setAttribute('text-anchor','end');
       maxLbl.textContent = opts.maxLabel;
       svg.appendChild(maxLbl);
 
       var targetLbl = document.createElementNS(ns,'text');
-      targetLbl.setAttribute('x', cx); targetLbl.setAttribute('y', cy+14);
+      targetLbl.setAttribute('x', cx); targetLbl.setAttribute('y', cy+16);
       targetLbl.setAttribute('font-size','9.5'); targetLbl.setAttribute('font-weight','700'); targetLbl.setAttribute('fill','#181818'); targetLbl.setAttribute('text-anchor','middle');
       targetLbl.textContent = 'Target: ' + opts.targetLabel;
       svg.appendChild(targetLbl);
