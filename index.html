@@ -119,6 +119,9 @@
   .kpi .delta svg{ width:11px; height:11px; }
   .kpi .delta .vs{ color:var(--muted); font-weight:400; margin-left:2px; }
   .kpi .spark{ margin-top:8px; display:block; }
+  .gauge-wrap{ margin-top:6px; }
+  .gauge{ width:100%; height:auto; display:block; }
+  .gauge-legend{ display:flex; justify-content:space-between; font-size:9.5px; color:var(--muted); margin-top:-4px; }
 
   /* Widget grid */
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
@@ -261,21 +264,25 @@
       <div class="lbl">Leads Generated</div>
       <div class="val">3,842</div>
       <div class="delta up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>18.4% <span class="vs">vs prior period</span></div>
+      <div class="gauge-wrap"><svg class="gauge" id="gaugeLeads" viewBox="0 0 160 96"></svg></div>
     </div>
     <div class="kpi">
       <div class="lbl">MQLs</div>
       <div class="val">1,120</div>
       <div class="delta up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>9.7% <span class="vs">vs prior period</span></div>
+      <div class="gauge-wrap"><svg class="gauge" id="gaugeMqls" viewBox="0 0 160 96"></svg></div>
     </div>
     <div class="kpi">
       <div class="lbl">Opportunities</div>
       <div class="val">214</div>
       <div class="delta down"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>3.1% <span class="vs">vs prior period</span></div>
+      <div class="gauge-wrap"><svg class="gauge" id="gaugeOpps" viewBox="0 0 160 96"></svg></div>
     </div>
     <div class="kpi">
       <div class="lbl">Pipeline Generated</div>
       <div class="val">$4.8M</div>
       <div class="delta up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>22.6% <span class="vs">vs prior period</span></div>
+      <div class="gauge-wrap"><svg class="gauge" id="gaugePipeline" viewBox="0 0 160 96"></svg></div>
     </div>
     <div class="kpi">
       <div class="lbl">Campaign ROI</div>
@@ -833,6 +840,95 @@
         '<td class="num pct-good">'+roi+'%</td>';
       tbody.appendChild(tr);
     });
+  })();
+
+  /* ---------- KPI SPEEDOMETER GAUGES (Salesforce-style) ---------- */
+  (function(){
+    var ns = 'http://www.w3.org/2000/svg';
+    var RED = '#C23934', YELLOW = '#eda100', GREEN = '#2E844A', NEEDLE = '#181818';
+
+    function polar(cx, cy, r, angleDeg){
+      var a = angleDeg * Math.PI / 180;
+      return { x: cx + r*Math.cos(a), y: cy - r*Math.sin(a) };
+    }
+    function arcPath(cx, cy, r, a0, a1){
+      var p0 = polar(cx,cy,r,a0), p1 = polar(cx,cy,r,a1);
+      var large = Math.abs(a0-a1) > 180 ? 1 : 0;
+      return 'M'+p0.x+','+p0.y+' A'+r+','+r+' 0 '+large+' 0 '+p1.x+','+p1.y;
+    }
+    // value fraction (0..1) -> angle: 0 => 180deg (left), 1 => 0deg (right)
+    function angleFor(frac){ return 180 - (frac*180); }
+
+    function buildGauge(id, opts){
+      var svg = document.getElementById(id);
+      if (!svg) return;
+      var cx = 80, cy = 82, r = 62, bandW = 13;
+      var min = 0, max = opts.max, target = opts.target, actual = opts.actual;
+
+      var redEnd = opts.redEnd, yellowEnd = opts.yellowEnd;
+      var bands = [
+        { from:0, to:redEnd, color:RED },
+        { from:redEnd, to:yellowEnd, color:YELLOW },
+        { from:yellowEnd, to:max, color:GREEN }
+      ];
+      bands.forEach(function(b){
+        var a0 = angleFor(b.from/max), a1 = angleFor(b.to/max);
+        var path = document.createElementNS(ns,'path');
+        path.setAttribute('d', arcPath(cx,cy,r,a0,a1));
+        path.setAttribute('fill','none');
+        path.setAttribute('stroke', b.color);
+        path.setAttribute('stroke-width', bandW);
+        svg.appendChild(path);
+      });
+
+      // target tick
+      var tFrac = Math.min(target/max, 1);
+      var tAngle = angleFor(tFrac);
+      var t0 = polar(cx,cy,r-bandW/2-3,tAngle);
+      var t1 = polar(cx,cy,r+bandW/2+3,tAngle);
+      var tick = document.createElementNS(ns,'line');
+      tick.setAttribute('x1',t0.x); tick.setAttribute('y1',t0.y);
+      tick.setAttribute('x2',t1.x); tick.setAttribute('y2',t1.y);
+      tick.setAttribute('stroke','#181818'); tick.setAttribute('stroke-width','2.5');
+      svg.appendChild(tick);
+
+      // needle
+      var aFrac = Math.min(actual/max, 1);
+      var nAngle = angleFor(aFrac);
+      var tip = polar(cx,cy,r-bandW/2-2,nAngle);
+      var needle = document.createElementNS(ns,'line');
+      needle.setAttribute('x1',cx); needle.setAttribute('y1',cy);
+      needle.setAttribute('x2',tip.x); needle.setAttribute('y2',tip.y);
+      needle.setAttribute('stroke', NEEDLE); needle.setAttribute('stroke-width','3'); needle.setAttribute('stroke-linecap','round');
+      svg.appendChild(needle);
+      var hub = document.createElementNS(ns,'circle');
+      hub.setAttribute('cx',cx); hub.setAttribute('cy',cy); hub.setAttribute('r','5');
+      hub.setAttribute('fill', NEEDLE);
+      svg.appendChild(hub);
+
+      // labels: min / max
+      var minLbl = document.createElementNS(ns,'text');
+      minLbl.setAttribute('x', cx-r-4); minLbl.setAttribute('y', cy+14);
+      minLbl.setAttribute('font-size','9'); minLbl.setAttribute('fill','#706E6B'); minLbl.setAttribute('text-anchor','start');
+      minLbl.textContent = opts.minLabel || '0';
+      svg.appendChild(minLbl);
+      var maxLbl = document.createElementNS(ns,'text');
+      maxLbl.setAttribute('x', cx+r+4); maxLbl.setAttribute('y', cy+14);
+      maxLbl.setAttribute('font-size','9'); maxLbl.setAttribute('fill','#706E6B'); maxLbl.setAttribute('text-anchor','end');
+      maxLbl.textContent = opts.maxLabel;
+      svg.appendChild(maxLbl);
+
+      var targetLbl = document.createElementNS(ns,'text');
+      targetLbl.setAttribute('x', cx); targetLbl.setAttribute('y', cy+14);
+      targetLbl.setAttribute('font-size','9.5'); targetLbl.setAttribute('font-weight','700'); targetLbl.setAttribute('fill','#181818'); targetLbl.setAttribute('text-anchor','middle');
+      targetLbl.textContent = 'Target: ' + opts.targetLabel;
+      svg.appendChild(targetLbl);
+    }
+
+    buildGauge('gaugeLeads', { max:4200, target:3500, actual:3842, redEnd:2450, yellowEnd:3325, maxLabel:'4.2K', targetLabel:'3,500' });
+    buildGauge('gaugeMqls', { max:1300, target:1000, actual:1120, redEnd:700, yellowEnd:950, maxLabel:'1.3K', targetLabel:'1,000' });
+    buildGauge('gaugeOpps', { max:300, target:250, actual:214, redEnd:175, yellowEnd:237.5, maxLabel:'300', targetLabel:'250' });
+    buildGauge('gaugePipeline', { max:5500000, target:3500000, actual:4800000, redEnd:2450000, yellowEnd:3325000, maxLabel:'$5.5M', targetLabel:'$3.5M' });
   })();
 
   /* ---------- REGIONS: bar chart + table ---------- */
