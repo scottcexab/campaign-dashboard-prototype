@@ -324,6 +324,26 @@
     </div>
   </div>
 
+  <!-- ROW: tactics -->
+  <div class="widget widget-full">
+    <div class="widget-head"><h2>Pipeline Contribution by Tactic</h2><div class="wmenu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
+    <div class="widget-body">
+      <div class="viz-root" id="tacticRoot">
+        <svg id="tacticSvg" viewBox="0 0 1180 300" width="100%" height="300"></svg>
+        <div class="viz-tooltip" id="tacticTip"></div>
+      </div>
+    </div>
+    <div class="widget-body" style="padding:0; border-top:1px solid var(--border);">
+      <table class="data">
+        <thead><tr>
+          <th>Tactic</th><th class="num">Pipeline</th><th class="num">% of Total</th><th class="num">Leads</th>
+          <th class="num">Spend</th><th class="num">Cost / Lead</th><th class="num">ROI</th>
+        </tr></thead>
+        <tbody id="tacticTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="grid2">
     <div class="widget">
       <div class="widget-head"><h2>Budget Utilization</h2><div class="wmenu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
@@ -632,6 +652,82 @@
         '<td class="num">'+fmtMoney(c.spend)+'</td>'+
         '<td class="num">$'+cpl+'</td>'+
         '<td class="num">'+fmtMoney(c.pipeline)+'</td>'+
+        '<td class="num pct-good">'+roi+'%</td>';
+      tbody.appendChild(tr);
+    });
+  })();
+
+  /* ---------- TACTICS: ranked bar chart + table ---------- */
+  (function(){
+    var tactics = [
+      { name:'Gated Whitepaper: "Anatomy of an AI Insider Threat"', pipeline:1240000, leads:612, spend: 18400, hex:'#0d366b' },
+      { name:'Webinar Series: "Stopping Agent-Driven Insider Threats"', pipeline:980000, leads:420, spend: 22000, hex:'#104281' },
+      { name:'ABM Direct Mail — Target Account Gift Kits', pipeline:760000, leads: 85, spend: 34500, hex:'#184f95' },
+      { name:'LinkedIn Sponsored InMail — Security Leaders', pipeline:610000, leads:340, spend: 28200, hex:'#1c5cab' },
+      { name:'Executive Roundtable Dinners', pipeline:520000, leads: 48, spend: 41000, hex:'#2a78d6' },
+      { name:'Conference Sponsorship — Black Hat Booth', pipeline:410000, leads:290, spend: 65000, hex:'#3987e5' },
+      { name:'Partner Co-Marketing Email', pipeline:180000, leads:210, spend:  6200, hex:'#6da7ec' },
+      { name:'Retargeting Display Ads', pipeline:100000, leads:520, spend:  9800, hex:'#9ec5f4' }
+    ];
+    var totalPipeline = tactics.reduce(function(a,t){ return a + t.pipeline; }, 0);
+
+    var svg = document.getElementById('tacticSvg');
+    var tip = document.getElementById('tacticTip');
+    var ns = 'http://www.w3.org/2000/svg';
+    var padL = 340, padR = 90, padT = 8;
+    var w = 1180, rowH = 28, gap = 8;
+    var plotW = w - padL - padR;
+    var maxV = tactics[0].pipeline * 1.05;
+
+    tactics.forEach(function(t, i){
+      var y = padT + i*(rowH+gap);
+      var bw = (t.pipeline/maxV) * plotW;
+
+      var nameLbl = document.createElementNS(ns,'text');
+      nameLbl.setAttribute('x', padL-12); nameLbl.setAttribute('y', y+rowH/2+4); nameLbl.setAttribute('text-anchor','end');
+      nameLbl.setAttribute('font-size','12'); nameLbl.setAttribute('fill','#3E3E3C');
+      nameLbl.textContent = t.name.length > 46 ? t.name.slice(0,44)+'…' : t.name;
+      var titleEl = document.createElementNS(ns,'title'); titleEl.textContent = t.name;
+      nameLbl.appendChild(titleEl);
+      svg.appendChild(nameLbl);
+
+      var rect = document.createElementNS(ns,'rect');
+      rect.setAttribute('x', padL); rect.setAttribute('y', y);
+      rect.setAttribute('width', Math.max(bw,2)); rect.setAttribute('height', rowH-4);
+      rect.setAttribute('rx', 3);
+      rect.setAttribute('fill', t.hex);
+      rect.style.cursor = 'pointer';
+      var pctOfTotal = (t.pipeline/totalPipeline*100).toFixed(1);
+      rect.addEventListener('mousemove', function(e){
+        var r = svg.parentElement.getBoundingClientRect();
+        tip.innerHTML = '<strong>'+t.name+'</strong><br>'+fmtMoney(t.pipeline)+' pipeline · '+pctOfTotal+'% of total<br>'+fmtNum(t.leads)+' leads · '+fmtMoney(t.spend)+' spend';
+        tip.style.left = (e.clientX - r.left + 12) + 'px';
+        tip.style.top = (e.clientY - r.top - 10) + 'px';
+        tip.classList.add('show');
+      });
+      rect.addEventListener('mouseleave', function(){ tip.classList.remove('show'); });
+      svg.appendChild(rect);
+
+      var valLbl = document.createElementNS(ns,'text');
+      valLbl.setAttribute('x', padL + bw + 10); valLbl.setAttribute('y', y+rowH/2+3-2);
+      valLbl.setAttribute('font-size','12'); valLbl.setAttribute('font-weight','700'); valLbl.setAttribute('fill','#181818');
+      valLbl.textContent = fmtMoney(t.pipeline);
+      svg.appendChild(valLbl);
+    });
+
+    var tbody = document.getElementById('tacticTableBody');
+    tactics.forEach(function(t){
+      var pct = (t.pipeline/totalPipeline*100).toFixed(1);
+      var cpl = Math.round(t.spend / t.leads);
+      var roi = Math.round((t.pipeline - t.spend) / t.spend * 100);
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><span class="chdot" style="background:'+t.hex+'"></span><span class="name">'+t.name+'</span></td>'+
+        '<td class="num">'+fmtMoney(t.pipeline)+'</td>'+
+        '<td class="num">'+pct+'%</td>'+
+        '<td class="num">'+fmtNum(t.leads)+'</td>'+
+        '<td class="num">'+fmtMoney(t.spend)+'</td>'+
+        '<td class="num">$'+cpl+'</td>'+
         '<td class="num pct-good">'+roi+'%</td>';
       tbody.appendChild(tr);
     });
