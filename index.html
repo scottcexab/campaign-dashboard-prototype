@@ -32,6 +32,10 @@
     --s3:#e87ba4; /* Webinar */
     --s4:#eda100; /* Social Ads */
     --s5:#1baf7a; /* Organic / Direct */
+    --s6:#eb6834; /* Physical Events */
+
+    /* categorical (fixed order — regions) */
+    --r1:#2a78d6; --r2:#008300; --r3:#e87ba4; --r4:#eda100; --r5:#1baf7a; --r6:#eb6834; --r7:#4a3aa7;
 
     /* sequential blue ramp (funnel) */
     --seq-150:#b7d3f6; --seq-250:#86b6ef; --seq-350:#5598e7;
@@ -219,6 +223,7 @@
       <div class="select">Campaign: <strong>Insider Threat Campaign</strong> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></div>
       <div class="select">Date Range: <strong>Jul 1 – Sep 30, 2026</strong> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></div>
       <div class="select">Compare To: <strong>Previous Period</strong> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></div>
+      <div class="select">Region: <strong>All Regions</strong> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></div>
       <div class="refresh-note">Last refreshed: Today 9:41 AM &nbsp;·&nbsp; Viewing: <a href="#">Table view</a></div>
     </div>
   </div>
@@ -301,7 +306,7 @@
     <div class="widget-head"><h2>Campaign Member Status by Channel</h2><div class="wmenu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
     <div class="widget-body">
       <div class="viz-root" id="stackRoot">
-        <svg id="stackSvg" viewBox="0 0 1180 240" width="100%" height="240"></svg>
+        <svg id="stackSvg" viewBox="0 0 1180 280" width="100%" height="280"></svg>
         <div class="legend" id="stackLegend"></div>
         <div class="viz-tooltip" id="stackTip"></div>
       </div>
@@ -344,6 +349,26 @@
     </div>
   </div>
 
+  <!-- ROW: region -->
+  <div class="widget widget-full">
+    <div class="widget-head"><h2>Pipeline by Region</h2><div class="wmenu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
+    <div class="widget-body">
+      <div class="viz-root" id="regionRoot">
+        <svg id="regionSvg" viewBox="0 0 1180 260" width="100%" height="260"></svg>
+        <div class="viz-tooltip" id="regionTip"></div>
+      </div>
+    </div>
+    <div class="widget-body" style="padding:0; border-top:1px solid var(--border);">
+      <table class="data">
+        <thead><tr>
+          <th>Region</th><th class="num">Leads</th><th class="num">Pipeline</th>
+          <th class="num">Spend</th><th class="num">Cost / Lead</th><th class="num">ROI</th>
+        </tr></thead>
+        <tbody id="regionTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="grid2">
     <div class="widget">
       <div class="widget-head"><h2>Budget Utilization</h2><div class="wmenu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
@@ -368,11 +393,12 @@
 <script>
 (function(){
   var channels = [
-    { name:'Paid Search',    color:'var(--s1)', hex:'#2a78d6', leads:1240, mqls:398, spend:68200, pipeline:1620000 },
+    { name:'Paid Search',    color:'var(--s1)', hex:'#2a78d6', leads:1040, mqls:328, spend:38200, pipeline:1120000 },
     { name:'Email Nurture',  color:'var(--s2)', hex:'#008300', leads: 980, mqls:312, spend:12400, pipeline:1180000 },
     { name:'Webinar',        color:'var(--s3)', hex:'#e87ba4', leads: 612, mqls:210, spend:31500, pipeline: 940000 },
-    { name:'Social Ads',     color:'var(--s4)', hex:'#eda100', leads: 705, mqls:142, spend:52800, pipeline: 610000 },
-    { name:'Organic / Direct', color:'var(--s5)', hex:'#1baf7a', leads:305, mqls: 58, spend: 19400, pipeline: 450000 }
+    { name:'Social Ads',     color:'var(--s4)', hex:'#eda100', leads: 565, mqls: 82, spend:24800, pipeline: 220000 },
+    { name:'Organic / Direct', color:'var(--s5)', hex:'#1baf7a', leads:305, mqls: 58, spend: 19400, pipeline: 450000 },
+    { name:'Physical Events', color:'var(--s6)', hex:'#eb6834', leads:340, mqls:130, spend:58000, pipeline: 890000 }
   ];
 
   function fmtMoney(n){
@@ -585,14 +611,15 @@
       { key:'won', label:'Won', hex:'#2E844A' }
     ];
     var data = [
-      { channel:'Paid Search',   sent:6200, responded:1900, mql:398, opportunity:120, won:14 },
+      { channel:'Paid Search',   sent:6200, responded:1900, mql:328, opportunity:105, won:12 },
       { channel:'Email Nurture', sent:5400, responded:1650, mql:312, opportunity: 88, won:12 },
       { channel:'Webinar',       sent:2800, responded: 920, mql:210, opportunity: 58, won: 6 },
-      { channel:'Social Ads',    sent:3100, responded: 560, mql:142, opportunity: 32, won: 4 },
-      { channel:'Organic/Direct',sent: 900, responded: 180, mql: 58, opportunity: 16, won: 2 }
+      { channel:'Social Ads',    sent:3100, responded: 560, mql: 82, opportunity: 22, won: 2 },
+      { channel:'Organic/Direct',sent: 900, responded: 180, mql: 58, opportunity: 16, won: 2 },
+      { channel:'Physical Events',sent:1200, responded: 480, mql:130, opportunity: 45, won: 7 }
     ];
     var padL=110, padR=20, padT=10, padB=28;
-    var w=1180, h=240;
+    var w=1180, h=280;
     var plotW = w-padL-padR, plotH = h-padT-padB;
     var maxTotal = Math.max.apply(null, data.map(function(d){ return d.sent; })) * 1.05;
     var rowH = 30, gap = 12;
@@ -727,6 +754,76 @@
         '<td class="num">'+pct+'%</td>'+
         '<td class="num">'+fmtNum(t.leads)+'</td>'+
         '<td class="num">'+fmtMoney(t.spend)+'</td>'+
+        '<td class="num">$'+cpl+'</td>'+
+        '<td class="num pct-good">'+roi+'%</td>';
+      tbody.appendChild(tr);
+    });
+  })();
+
+  /* ---------- REGIONS: bar chart + table ---------- */
+  (function(){
+    var regions = [
+      { name:'North America (NA)',             hex:'#2a78d6', leads:1729, spend: 82000, pipeline:2160000 },
+      { name:'Europe (EMEA)',                  hex:'#008300', leads: 730, spend: 37000, pipeline: 912000 },
+      { name:'Asia Pacific (APAC)',             hex:'#eda100', leads: 461, spend: 24000, pipeline: 576000 },
+      { name:'UK &amp; Ireland (UKI)',          hex:'#e87ba4', leads: 384, spend: 16500, pipeline: 480000 },
+      { name:'Japan',                           hex:'#1baf7a', leads: 231, spend: 11000, pipeline: 288000 },
+      { name:'India, Middle East &amp; Africa (IMETA)', hex:'#eb6834', leads: 154, spend:  7000, pipeline: 192000 },
+      { name:'Latin America (LatAM)',           hex:'#4a3aa7', leads: 153, spend:  6800, pipeline: 192000 }
+    ];
+
+    var svg = document.getElementById('regionSvg');
+    var tip = document.getElementById('regionTip');
+    var ns = 'http://www.w3.org/2000/svg';
+    var padL = 220, padR = 90, padT = 8;
+    var w = 1180, rowH = 30, gap = 8;
+    var plotW = w - padL - padR;
+    var maxV = regions[0].pipeline * 1.05;
+
+    regions.forEach(function(reg, i){
+      var y = padT + i*(rowH+gap);
+      var bw = (reg.pipeline/maxV) * plotW;
+
+      var nameLbl = document.createElementNS(ns,'text');
+      nameLbl.setAttribute('x', padL-12); nameLbl.setAttribute('y', y+rowH/2+4); nameLbl.setAttribute('text-anchor','end');
+      nameLbl.setAttribute('font-size','12'); nameLbl.setAttribute('fill','#3E3E3C');
+      nameLbl.textContent = reg.name.replace(/&amp;/g,'&');
+      svg.appendChild(nameLbl);
+
+      var rect = document.createElementNS(ns,'rect');
+      rect.setAttribute('x', padL); rect.setAttribute('y', y);
+      rect.setAttribute('width', Math.max(bw,2)); rect.setAttribute('height', rowH-6);
+      rect.setAttribute('rx', 3);
+      rect.setAttribute('fill', reg.hex);
+      rect.style.cursor = 'pointer';
+      var pctOfTotal = (reg.pipeline/4800000*100).toFixed(1);
+      rect.addEventListener('mousemove', function(e){
+        var r = svg.parentElement.getBoundingClientRect();
+        tip.innerHTML = '<strong>'+reg.name.replace(/&amp;/g,'&')+'</strong><br>'+fmtMoney(reg.pipeline)+' pipeline · '+pctOfTotal+'% of total<br>'+fmtNum(reg.leads)+' leads · '+fmtMoney(reg.spend)+' spend';
+        tip.style.left = (e.clientX - r.left + 12) + 'px';
+        tip.style.top = (e.clientY - r.top - 10) + 'px';
+        tip.classList.add('show');
+      });
+      rect.addEventListener('mouseleave', function(){ tip.classList.remove('show'); });
+      svg.appendChild(rect);
+
+      var valLbl = document.createElementNS(ns,'text');
+      valLbl.setAttribute('x', padL + bw + 10); valLbl.setAttribute('y', y+rowH/2+1);
+      valLbl.setAttribute('font-size','12'); valLbl.setAttribute('font-weight','700'); valLbl.setAttribute('fill','#181818');
+      valLbl.textContent = fmtMoney(reg.pipeline);
+      svg.appendChild(valLbl);
+    });
+
+    var tbody = document.getElementById('regionTableBody');
+    regions.forEach(function(reg){
+      var cpl = Math.round(reg.spend / reg.leads);
+      var roi = Math.round((reg.pipeline - reg.spend) / reg.spend * 100);
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><span class="chdot" style="background:'+reg.hex+'"></span><span class="name">'+reg.name+'</span></td>'+
+        '<td class="num">'+fmtNum(reg.leads)+'</td>'+
+        '<td class="num">'+fmtMoney(reg.pipeline)+'</td>'+
+        '<td class="num">'+fmtMoney(reg.spend)+'</td>'+
         '<td class="num">$'+cpl+'</td>'+
         '<td class="num pct-good">'+roi+'%</td>';
       tbody.appendChild(tr);
