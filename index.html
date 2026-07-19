@@ -315,6 +315,34 @@
     </div>
   </div>
 
+  <!-- ROW: email engagement -->
+  <div class="widget widget-full">
+    <div class="widget-head"><h2>Email Engagement</h2><div class="wmenu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
+    <div class="widget-body">
+      <div class="pf-row">
+        <div class="pf-card">
+          <span class="pf-stage" style="background:#5598e7;">SENT</span>
+          <h3>Campaign emails sent</h3>
+          <div class="pf-stat"><span class="k">Total sends</span><span class="v">18,400</span></div>
+          <div class="pf-stat"><span class="k">Unique recipients</span><span class="v">16,120</span></div>
+          <div class="pf-stat"><span class="k">Delivery rate</span><span class="v">98.6%</span></div>
+        </div>
+        <div class="pf-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <span class="pct">28.3%</span>
+          <span class="lbl">response rate</span>
+        </div>
+        <div class="pf-card">
+          <span class="pf-stage" style="background:#2E844A;">RESPONDED</span>
+          <h3>Opened, clicked, or replied</h3>
+          <div class="pf-stat"><span class="k">Total responded</span><span class="v">5,210</span></div>
+          <div class="pf-stat"><span class="k">Click-through rate</span><span class="v">11.4%</span></div>
+          <div class="pf-stat"><span class="k">Advanced to Inquiry</span><span class="v">3,842</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ROW: line chart full width -->
   <div class="widget widget-full">
     <div class="widget-head"><h2>Leads Generated Over Time — Weekly</h2><div class="wmenu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
@@ -360,6 +388,7 @@
     <div class="widget-body">
       <div class="viz-root" id="tacticRoot">
         <svg id="tacticSvg" viewBox="0 0 1180 300" width="100%" height="300"></svg>
+        <div class="legend" id="tacticLegend"></div>
         <div class="viz-tooltip" id="tacticTip"></div>
       </div>
     </div>
@@ -380,6 +409,7 @@
     <div class="widget-body">
       <div class="viz-root" id="regionRoot">
         <svg id="regionSvg" viewBox="0 0 1180 260" width="100%" height="260"></svg>
+        <div class="legend" id="regionLegend"></div>
         <div class="viz-tooltip" id="regionTip"></div>
       </div>
     </div>
@@ -552,11 +582,10 @@
     var tip = document.getElementById('funnelTip');
     var ns = 'http://www.w3.org/2000/svg';
     var stages = [
-      { label:'Sent',        value:18400, color:'var(--seq-150)', hex:'#b7d3f6' },
-      { label:'Responded',   value: 5210, color:'var(--seq-250)', hex:'#86b6ef' },
-      { label:'MQL',         value: 1120, color:'var(--seq-350)', hex:'#5598e7' },
-      { label:'SQL',         value:  412, color:'var(--seq-450)', hex:'#2a78d6' },
-      { label:'Opportunity', value:  214, color:'var(--seq-550)', hex:'#1c5cab' },
+      { label:'Inquiry',     value: 3842, color:'var(--seq-150)', hex:'#b7d3f6' },
+      { label:'MQL',         value: 1120, color:'var(--seq-250)', hex:'#86b6ef' },
+      { label:'SQL',         value:  412, color:'var(--seq-350)', hex:'#5598e7' },
+      { label:'Opportunity', value:  214, color:'var(--seq-450)', hex:'#2a78d6' },
       { label:'Won',         value:   38, color:'var(--seq-650)', hex:'#104281' }
     ];
     var maxV = stages[0].value;
@@ -766,62 +795,103 @@
     });
   })();
 
-  /* ---------- TACTICS: ranked bar chart + table ---------- */
-  (function(){
-    var tactics = [
-      { name:'Gated Whitepaper: "Anatomy of an AI Insider Threat"', pipeline:1240000, leads:612, spend: 18400, hex:'#0d366b' },
-      { name:'Webinar Series: "Stopping Agent-Driven Insider Threats"', pipeline:980000, leads:420, spend: 22000, hex:'#104281' },
-      { name:'ABM Direct Mail — Target Account Gift Kits', pipeline:760000, leads: 85, spend: 34500, hex:'#184f95' },
-      { name:'LinkedIn Sponsored InMail — Security Leaders', pipeline:610000, leads:340, spend: 28200, hex:'#1c5cab' },
-      { name:'Executive Roundtable Dinners', pipeline:520000, leads: 48, spend: 41000, hex:'#2a78d6' },
-      { name:'Conference Sponsorship — Black Hat Booth', pipeline:410000, leads:290, spend: 65000, hex:'#3987e5' },
-      { name:'Partner Co-Marketing Email', pipeline:180000, leads:210, spend:  6200, hex:'#6da7ec' },
-      { name:'Retargeting Display Ads', pipeline:100000, leads:520, spend:  9800, hex:'#9ec5f4' }
-    ];
-    var totalPipeline = tactics.reduce(function(a,t){ return a + t.pipeline; }, 0);
-
-    var svg = document.getElementById('tacticSvg');
-    var tip = document.getElementById('tacticTip');
+  /* ---------- Shared: inquiry-stage segmented ranked bar chart ---------- */
+  var STAGES = [
+    { key:'inquiry',       label:'Inquiry',       hex:'#b7d3f6' },
+    { key:'qualification', label:'Qualification', hex:'#5598e7' },
+    { key:'proposal',      label:'Proposal',      hex:'#eda100' },
+    { key:'negotiation',   label:'Negotiation',   hex:'#eb6834' },
+    { key:'won',           label:'Closed Won',    hex:'#2E844A' }
+  ];
+  function renderStagedBar(cfg){
+    var svg = document.getElementById(cfg.svgId);
+    var tip = document.getElementById(cfg.tipId);
+    var legendEl = document.getElementById(cfg.legendId);
     var ns = 'http://www.w3.org/2000/svg';
-    var padL = 340, padR = 90, padT = 8;
-    var w = 1180, rowH = 28, gap = 8;
+    var padL = cfg.padL, padR = 90, padT = 8;
+    var w = 1180, rowH = cfg.rowH, gap = cfg.gap;
     var plotW = w - padL - padR;
-    var maxV = tactics[0].pipeline * 1.05;
+    var maxV = cfg.items[0].pipeline * 1.05;
+    var total = cfg.items.reduce(function(a,it){ return a + it.pipeline; }, 0);
 
-    tactics.forEach(function(t, i){
+    cfg.items.forEach(function(item, i){
       var y = padT + i*(rowH+gap);
-      var bw = (t.pipeline/maxV) * plotW;
+      var totalW = (item.pipeline/maxV) * plotW;
 
       var nameLbl = document.createElementNS(ns,'text');
       nameLbl.setAttribute('x', padL-12); nameLbl.setAttribute('y', y+rowH/2+4); nameLbl.setAttribute('text-anchor','end');
       nameLbl.setAttribute('font-size','12'); nameLbl.setAttribute('fill','#3E3E3C');
-      nameLbl.textContent = t.name.length > 46 ? t.name.slice(0,44)+'…' : t.name;
-      var titleEl = document.createElementNS(ns,'title'); titleEl.textContent = t.name;
+      var fullName = cfg.nameOf(item);
+      nameLbl.textContent = fullName.length > (cfg.nameMaxChars||46) ? fullName.slice(0,(cfg.nameMaxChars||46)-2)+'…' : fullName;
+      var titleEl = document.createElementNS(ns,'title'); titleEl.textContent = fullName;
       nameLbl.appendChild(titleEl);
       svg.appendChild(nameLbl);
 
-      var rect = document.createElementNS(ns,'rect');
-      rect.setAttribute('x', padL); rect.setAttribute('y', y);
-      rect.setAttribute('width', Math.max(bw,2)); rect.setAttribute('height', rowH-4);
-      rect.setAttribute('rx', 3);
-      rect.setAttribute('fill', t.hex);
-      rect.style.cursor = 'pointer';
-      var pctOfTotal = (t.pipeline/totalPipeline*100).toFixed(1);
-      rect.addEventListener('mousemove', function(e){
-        var r = svg.parentElement.getBoundingClientRect();
-        tip.innerHTML = '<strong>'+t.name+'</strong><br>'+fmtMoney(t.pipeline)+' pipeline · '+pctOfTotal+'% of total<br>'+fmtNum(t.leads)+' leads · '+fmtMoney(t.spend)+' spend';
-        tip.style.left = (e.clientX - r.left + 12) + 'px';
-        tip.style.top = (e.clientY - r.top - 10) + 'px';
-        tip.classList.add('show');
+      var xCursor = padL;
+      STAGES.forEach(function(st){
+        var val = item.stages[st.key];
+        var segW = (val/maxV) * plotW;
+        var rect = document.createElementNS(ns,'rect');
+        rect.setAttribute('x', xCursor); rect.setAttribute('y', y);
+        rect.setAttribute('width', Math.max(segW-2,0)); rect.setAttribute('height', rowH-4);
+        rect.setAttribute('fill', st.hex);
+        rect.style.cursor = 'pointer';
+        rect.addEventListener('mousemove', function(e){
+          var r = svg.parentElement.getBoundingClientRect();
+          var stagePct = (val/item.pipeline*100).toFixed(1);
+          tip.innerHTML = '<strong>'+fullName+'</strong><br>'+st.label+': '+fmtMoney(val)+' ('+stagePct+'% of item)<br>Total pipeline: '+fmtMoney(item.pipeline);
+          tip.style.left = (e.clientX - r.left + 12) + 'px';
+          tip.style.top = (e.clientY - r.top - 10) + 'px';
+          tip.classList.add('show');
+        });
+        rect.addEventListener('mouseleave', function(){ tip.classList.remove('show'); });
+        svg.appendChild(rect);
+        xCursor += segW;
       });
-      rect.addEventListener('mouseleave', function(){ tip.classList.remove('show'); });
-      svg.appendChild(rect);
 
       var valLbl = document.createElementNS(ns,'text');
-      valLbl.setAttribute('x', padL + bw + 10); valLbl.setAttribute('y', y+rowH/2+3-2);
+      valLbl.setAttribute('x', padL + totalW + 10); valLbl.setAttribute('y', y+rowH/2+3-2);
       valLbl.setAttribute('font-size','12'); valLbl.setAttribute('font-weight','700'); valLbl.setAttribute('fill','#181818');
-      valLbl.textContent = fmtMoney(t.pipeline);
+      valLbl.textContent = fmtMoney(item.pipeline);
       svg.appendChild(valLbl);
+    });
+
+    if (legendEl){
+      STAGES.forEach(function(st){
+        var el = document.createElement('div');
+        el.className = 'legend-item';
+        el.innerHTML = '<span class="legend-dot" style="background:'+st.hex+'"></span>'+st.label;
+        legendEl.appendChild(el);
+      });
+    }
+  }
+
+  /* ---------- TACTICS: ranked bar chart + table (staged by inquiry stage) ---------- */
+  (function(){
+    var tactics = [
+      { name:'Gated Whitepaper: "Anatomy of an AI Insider Threat"', pipeline:1240000, leads:612, spend: 18400, hex:'#0d366b',
+        stages:{ inquiry:434000, qualification:347200, proposal:223200, negotiation:148800, won:86800 } },
+      { name:'Webinar Series: "Stopping Agent-Driven Insider Threats"', pipeline:980000, leads:420, spend: 22000, hex:'#104281',
+        stages:{ inquiry:313600, qualification:264600, proposal:196000, negotiation:127400, won:78400 } },
+      { name:'ABM Direct Mail — Target Account Gift Kits', pipeline:760000, leads: 85, spend: 34500, hex:'#184f95',
+        stages:{ inquiry:152000, qualification:167200, proposal:182400, negotiation:144400, won:114000 } },
+      { name:'LinkedIn Sponsored InMail — Security Leaders', pipeline:610000, leads:340, spend: 28200, hex:'#1c5cab',
+        stages:{ inquiry:207400, qualification:158600, proposal:115900, negotiation: 79300, won: 48800 } },
+      { name:'Executive Roundtable Dinners', pipeline:520000, leads: 48, spend: 41000, hex:'#2a78d6',
+        stages:{ inquiry: 78000, qualification:104000, proposal:130000, negotiation:114400, won: 93600 } },
+      { name:'Conference Sponsorship — Black Hat Booth', pipeline:410000, leads:290, spend: 65000, hex:'#3987e5',
+        stages:{ inquiry:123000, qualification:106600, proposal: 82000, negotiation: 61500, won: 36900 } },
+      { name:'Partner Co-Marketing Email', pipeline:180000, leads:210, spend:  6200, hex:'#6da7ec',
+        stages:{ inquiry: 68400, qualification: 48600, proposal: 32400, negotiation: 19800, won: 10800 } },
+      { name:'Retargeting Display Ads', pipeline:100000, leads:520, spend:  9800, hex:'#9ec5f4',
+        stages:{ inquiry: 45000, qualification: 25000, proposal: 15000, negotiation: 10000, won:  5000 } }
+    ];
+    var totalPipeline = tactics.reduce(function(a,t){ return a + t.pipeline; }, 0);
+
+    renderStagedBar({
+      svgId:'tacticSvg', tipId:'tacticTip', legendId:'tacticLegend',
+      items: tactics, padL:340, rowH:28, gap:8, nameMaxChars:46,
+      nameOf: function(t){ return t.name; }
     });
 
     var tbody = document.getElementById('tacticTableBody');
@@ -941,58 +1011,29 @@
     buildGauge('gaugePipeline', { max:5500000, target:3500000, actual:4800000, redEnd:2450000, yellowEnd:3325000, maxLabel:'$5.5M', targetLabel:'$3.5M' });
   })();
 
-  /* ---------- REGIONS: bar chart + table ---------- */
+  /* ---------- REGIONS: bar chart + table (staged by inquiry stage) ---------- */
   (function(){
     var regions = [
-      { name:'North America (NA)',             hex:'#2a78d6', leads:1729, spend: 82000, pipeline:2160000 },
-      { name:'Europe (EMEA)',                  hex:'#008300', leads: 730, spend: 37000, pipeline: 912000 },
-      { name:'Asia Pacific (APAC)',             hex:'#eda100', leads: 461, spend: 24000, pipeline: 576000 },
-      { name:'UK &amp; Ireland (UKI)',          hex:'#e87ba4', leads: 384, spend: 16500, pipeline: 480000 },
-      { name:'Japan',                           hex:'#1baf7a', leads: 231, spend: 11000, pipeline: 288000 },
-      { name:'India, Middle East &amp; Africa (IMETA)', hex:'#eb6834', leads: 154, spend:  7000, pipeline: 192000 },
-      { name:'Latin America (LatAM)',           hex:'#4a3aa7', leads: 153, spend:  6800, pipeline: 192000 }
+      { name:'North America (NA)', hex:'#2a78d6', leads:1729, spend: 82000, pipeline:2160000,
+        stages:{ inquiry:475200, qualification:518400, proposal:475200, negotiation:388800, won:302400 } },
+      { name:'Europe (EMEA)', hex:'#008300', leads: 730, spend: 37000, pipeline: 912000,
+        stages:{ inquiry:255360, qualification:228000, proposal:182400, negotiation:136800, won:109440 } },
+      { name:'Asia Pacific (APAC)', hex:'#eda100', leads: 461, spend: 24000, pipeline: 576000,
+        stages:{ inquiry:218880, qualification:149760, proposal:103680, negotiation: 63360, won: 40320 } },
+      { name:'UK &amp; Ireland (UKI)', hex:'#e87ba4', leads: 384, spend: 16500, pipeline: 480000,
+        stages:{ inquiry:144000, qualification:124800, proposal: 96000, negotiation: 67200, won: 48000 } },
+      { name:'Japan', hex:'#1baf7a', leads: 231, spend: 11000, pipeline: 288000,
+        stages:{ inquiry:120960, qualification: 74880, proposal: 46080, negotiation: 28800, won: 17280 } },
+      { name:'India, Middle East &amp; Africa (IMETA)', hex:'#eb6834', leads: 154, spend:  7000, pipeline: 192000,
+        stages:{ inquiry: 92160, qualification: 48000, proposal: 26880, negotiation: 15360, won:  9600 } },
+      { name:'Latin America (LatAM)', hex:'#4a3aa7', leads: 153, spend:  6800, pipeline: 192000,
+        stages:{ inquiry: 88320, qualification: 49920, proposal: 28800, negotiation: 15360, won:  9600 } }
     ];
 
-    var svg = document.getElementById('regionSvg');
-    var tip = document.getElementById('regionTip');
-    var ns = 'http://www.w3.org/2000/svg';
-    var padL = 220, padR = 90, padT = 8;
-    var w = 1180, rowH = 30, gap = 8;
-    var plotW = w - padL - padR;
-    var maxV = regions[0].pipeline * 1.05;
-
-    regions.forEach(function(reg, i){
-      var y = padT + i*(rowH+gap);
-      var bw = (reg.pipeline/maxV) * plotW;
-
-      var nameLbl = document.createElementNS(ns,'text');
-      nameLbl.setAttribute('x', padL-12); nameLbl.setAttribute('y', y+rowH/2+4); nameLbl.setAttribute('text-anchor','end');
-      nameLbl.setAttribute('font-size','12'); nameLbl.setAttribute('fill','#3E3E3C');
-      nameLbl.textContent = reg.name.replace(/&amp;/g,'&');
-      svg.appendChild(nameLbl);
-
-      var rect = document.createElementNS(ns,'rect');
-      rect.setAttribute('x', padL); rect.setAttribute('y', y);
-      rect.setAttribute('width', Math.max(bw,2)); rect.setAttribute('height', rowH-6);
-      rect.setAttribute('rx', 3);
-      rect.setAttribute('fill', reg.hex);
-      rect.style.cursor = 'pointer';
-      var pctOfTotal = (reg.pipeline/4800000*100).toFixed(1);
-      rect.addEventListener('mousemove', function(e){
-        var r = svg.parentElement.getBoundingClientRect();
-        tip.innerHTML = '<strong>'+reg.name.replace(/&amp;/g,'&')+'</strong><br>'+fmtMoney(reg.pipeline)+' pipeline · '+pctOfTotal+'% of total<br>'+fmtNum(reg.leads)+' leads · '+fmtMoney(reg.spend)+' spend';
-        tip.style.left = (e.clientX - r.left + 12) + 'px';
-        tip.style.top = (e.clientY - r.top - 10) + 'px';
-        tip.classList.add('show');
-      });
-      rect.addEventListener('mouseleave', function(){ tip.classList.remove('show'); });
-      svg.appendChild(rect);
-
-      var valLbl = document.createElementNS(ns,'text');
-      valLbl.setAttribute('x', padL + bw + 10); valLbl.setAttribute('y', y+rowH/2+1);
-      valLbl.setAttribute('font-size','12'); valLbl.setAttribute('font-weight','700'); valLbl.setAttribute('fill','#181818');
-      valLbl.textContent = fmtMoney(reg.pipeline);
-      svg.appendChild(valLbl);
+    renderStagedBar({
+      svgId:'regionSvg', tipId:'regionTip', legendId:'regionLegend',
+      items: regions, padL:220, rowH:30, gap:8, nameMaxChars:60,
+      nameOf: function(reg){ return reg.name.replace(/&amp;/g,'&'); }
     });
 
     var tbody = document.getElementById('regionTableBody');
