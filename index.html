@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026 Product Launch — Campaign Performance Dashboard (Prototype)</title>
+<meta name="description" content="Prototype campaign tracking dashboard mimicking a standard Salesforce Lightning reporting dashboard. UI concept only — not a real Salesforce org or product screenshot.">
+<meta name="robots" content="noindex, nofollow">
+<style>
+  :root{
+    --brand:#0176D3;
+    --brand-dark:#014486;
+    --header:#16325C;
+    --header-2:#032D60;
+    --page-bg:#F3F2F2;
+    --card-bg:#FFFFFF;
+    --border:#DDDBDA;
+    --border-2:#C9C7C5;
+    --ink:#181818;
+    --ink-2:#3E3E3C;
+    --muted:#706E6B;
+    --link:#0176D3;
+    --success:#2E844A;
+    --success-bg:#EAF6EE;
+    --error:#C23934;
+    --error-bg:#FCF2F2;
+    --radius:4px;
+
+    /* categorical (fixed order — channels) */
+    --s1:#2a78d6; /* Paid Search */
+    --s2:#008300; /* Email Nurture */
+    --s3:#e87ba4; /* Webinar */
+    --s4:#eda100; /* Social Ads */
+    --s5:#1baf7a; /* Organic / Direct */
+
+    /* sequential blue ramp (funnel) */
+    --seq-150:#b7d3f6; --seq-250:#86b6ef; --seq-350:#5598e7;
+    --seq-450:#2a78d6; --seq-550:#1c5cab; --seq-650:#104281;
+
+    /* member-status categorical (fixed order) */
+    --st-sent:#b7d3f6; --st-resp:#5598e7; --st-mql:#eda100; --st-opp:#eb6834; --st-won:#2E844A;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--page-bg); color:var(--ink-2);
+    font-family:'Salesforce Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+    font-size:13px; -webkit-font-smoothing:antialiased;
+  }
+  a{ color:var(--link); text-decoration:none; }
+  a:hover{ text-decoration:underline; }
+  .disclaimer{
+    background:#FFF7E6; color:#7A5300; border-bottom:1px solid #F0DCA3;
+    font-size:12.5px; text-align:center; padding:8px 16px;
+  }
+
+  /* ===== Global header ===== */
+  .gheader{ background:linear-gradient(180deg, var(--header) 0%, var(--header-2) 100%); color:#fff; display:flex; align-items:center; height:48px; padding:0 12px; gap:14px; }
+  .waffle{ width:32px; height:32px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .waffle:hover{ background:rgba(255,255,255,.12); }
+  .waffle svg{ width:16px; height:16px; }
+  .gheader .brandmark{ display:flex; align-items:center; gap:8px; font-weight:700; font-size:15px; color:#fff; white-space:nowrap; }
+  .gheader .brandmark .cloud{ width:22px; height:22px; }
+  .gheader .appname{ font-weight:400; color:rgba(255,255,255,.75); font-size:13px; padding-left:6px; border-left:1px solid rgba(255,255,255,.25); margin-left:2px; }
+  .gsearch{ flex:1; max-width:520px; display:flex; align-items:center; background:rgba(255,255,255,.14); border-radius:16px; padding:0 12px; height:30px; gap:8px; }
+  .gsearch input{ background:transparent; border:0; outline:0; color:#fff; font-size:13px; width:100%; }
+  .gsearch input::placeholder{ color:rgba(255,255,255,.65); }
+  .gsearch svg{ width:14px; height:14px; color:rgba(255,255,255,.75); flex:none; }
+  .gheader .gicons{ margin-left:auto; display:flex; align-items:center; gap:4px; }
+  .gicon{ width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; }
+  .gicon:hover{ background:rgba(255,255,255,.12); }
+  .gicon svg{ width:17px; height:17px; color:#fff; }
+  .gicon .badge{ position:absolute; top:2px; right:2px; width:8px; height:8px; border-radius:50%; background:#FE9339; border:1.5px solid var(--header-2); }
+  .avatar{ width:28px; height:28px; border-radius:50%; background:var(--brand); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:11.5px; margin-left:4px; }
+
+  /* ===== App tab nav ===== */
+  .appnav{ background:#fff; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 16px; overflow-x:auto; }
+  .appnav a{ display:flex; align-items:center; height:44px; padding:0 16px; color:var(--ink-2); font-size:13px; font-weight:400; border-bottom:3px solid transparent; white-space:nowrap; }
+  .appnav a:hover{ color:var(--ink); text-decoration:none; background:#F3F3F3; }
+  .appnav a.active{ color:var(--ink); font-weight:700; border-bottom-color:var(--brand); }
+
+  /* ===== Page header ===== */
+  .pagehead{ background:#fff; border-bottom:1px solid var(--border); }
+  .pagehead-inner{ max-width:1400px; margin:0 auto; padding:16px 24px 0; }
+  .breadcrumb{ font-size:12px; color:var(--muted); margin-bottom:6px; }
+  .breadcrumb a{ color:var(--muted); }
+  .titlerow{ display:flex; align-items:flex-start; justify-content:space-between; gap:24px; flex-wrap:wrap; padding-bottom:14px; }
+  .titlerow h1{ font-size:20px; font-weight:700; color:var(--ink); margin:0 0 4px; display:flex; align-items:center; gap:10px; }
+  .titlerow h1 .dicon{ width:28px; height:28px; border-radius:6px; background:#EAF2FC; display:flex; align-items:center; justify-content:center; flex:none; }
+  .titlerow h1 .dicon svg{ width:16px; height:16px; color:var(--brand); }
+  .titlerow .meta{ font-size:12px; color:var(--muted); margin-left:38px; }
+  .actions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .btn{ display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 12px; border-radius:var(--radius); font-size:13px; font-weight:400; cursor:pointer; border:1px solid var(--border-2); background:#fff; color:var(--brand); white-space:nowrap; }
+  .btn:hover{ background:#F3F3F3; text-decoration:none; }
+  .btn svg{ width:13px; height:13px; }
+  .btn-brand{ background:var(--brand); color:#fff; border-color:var(--brand); }
+  .btn-brand:hover{ background:var(--brand-dark); }
+  .filterrow{ display:flex; align-items:center; gap:10px; padding:10px 0 14px; flex-wrap:wrap; }
+  .select{ display:flex; align-items:center; gap:8px; height:30px; padding:0 10px; border:1px solid var(--border-2); border-radius:var(--radius); background:#fff; font-size:13px; color:var(--ink-2); cursor:pointer; }
+  .select svg{ width:11px; height:11px; color:var(--muted); }
+  .refresh-note{ font-size:11.5px; color:var(--muted); margin-left:auto; }
+
+  /* ===== Layout ===== */
+  .content{ max-width:1400px; margin:0 auto; padding:20px 24px 60px; }
+
+  /* KPI tiles */
+  .kpi-row{ display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:16px; }
+  @media (max-width:1200px){ .kpi-row{ grid-template-columns:repeat(3,1fr); } }
+  @media (max-width:640px){ .kpi-row{ grid-template-columns:repeat(2,1fr); } }
+  .kpi{ background:var(--card-bg); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; }
+  .kpi .lbl{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; color:var(--muted); margin-bottom:8px; }
+  .kpi .val{ font-size:24px; font-weight:700; color:var(--ink); line-height:1.1; }
+  .kpi .delta{ display:flex; align-items:center; gap:4px; margin-top:8px; font-size:12px; font-weight:600; }
+  .kpi .delta.up{ color:var(--success); }
+  .kpi .delta.down{ color:var(--error); }
+  .kpi .delta svg{ width:11px; height:11px; }
+  .kpi .delta .vs{ color:var(--muted); font-weight:400; margin-left:2px; }
+  .kpi .spark{ margin-top:8px; display:block; }
+
+  /* Widget grid */
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+  @media (max-width:960px){ .grid2{ grid-template-columns:1fr; } }
+  .widget{ background:var(--card-bg); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .widget-head{ display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--border); }
+  .widget-head h2{ font-size:14px; font-weight:700; color:var(--ink); margin:0; }
+  .widget-head .wmenu{ width:24px; height:24px; border-radius:4px; display:flex; align-items:center; justify-content:center; color:var(--muted); cursor:pointer; }
+  .widget-head .wmenu:hover{ background:#F3F3F3; }
+  .widget-head .wmenu svg{ width:14px; height:14px; }
+  .widget-body{ padding:16px; }
+  .widget-full{ margin-bottom:12px; }
+
+  /* legend */
+  .legend{ display:flex; flex-wrap:wrap; gap:14px; margin-top:14px; }
+  .legend-item{ display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-2); }
+  .legend-dot{ width:9px; height:9px; border-radius:2px; flex:none; }
+
+  /* tooltip */
+  .viz-tooltip{
+    position:absolute; pointer-events:none; background:#181818; color:#fff; font-size:11.5px;
+    padding:6px 9px; border-radius:4px; line-height:1.4; box-shadow:0 4px 10px rgba(0,0,0,.25);
+    opacity:0; transition:opacity .1s ease; z-index:20; white-space:nowrap;
+  }
+  .viz-tooltip.show{ opacity:1; }
+  .viz-root{ position:relative; }
+
+  /* table */
+  table.data{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  table.data th{ text-align:left; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; color:var(--muted); padding:9px 14px; border-bottom:1px solid var(--border); background:#FAFAF9; }
+  table.data td{ padding:10px 14px; border-bottom:1px solid var(--border); color:var(--ink-2); }
+  table.data tr:last-child td{ border-bottom:none; }
+  table.data tr:hover td{ background:#F5F8FD; }
+  table.data td.num{ text-align:right; font-variant-numeric:tabular-nums; }
+  table.data .chdot{ display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:8px; vertical-align:middle; }
+  table.data .name{ font-weight:600; color:var(--ink); }
+  .pct-good{ color:var(--success); font-weight:600; }
+  .pct-bad{ color:var(--error); font-weight:600; }
+
+  /* meter */
+  .meter-track{ height:10px; border-radius:6px; background:var(--seq-150); overflow:hidden; }
+  .meter-fill{ height:100%; border-radius:6px; background:var(--brand); }
+  .meter-labels{ display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:8px; }
+  .meter-labels strong{ color:var(--ink); }
+
+  footer{ text-align:center; padding:24px; font-size:11.5px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="disclaimer"><strong>UI concept</strong> — a prototype dashboard mimicking Salesforce Lightning's reporting/dashboard patterns, built for illustration only. Not a real Salesforce org, product screenshot, or live data.</div>
+
+<!-- GLOBAL HEADER -->
+<div class="gheader">
+  <div class="waffle" title="App Launcher">
+    <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="2" cy="2" r="1.6"/><circle cx="8" cy="2" r="1.6"/><circle cx="14" cy="2" r="1.6"/><circle cx="2" cy="8" r="1.6"/><circle cx="8" cy="8" r="1.6"/><circle cx="14" cy="8" r="1.6"/><circle cx="2" cy="14" r="1.6"/><circle cx="8" cy="14" r="1.6"/><circle cx="14" cy="14" r="1.6"/></svg>
+  </div>
+  <div class="brandmark">
+    <svg class="cloud" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M7 18a4 4 0 01-.5-7.97A5 5 0 0116.3 8.5 4.5 4.5 0 0117.5 18H7z"/></svg>
+    Marketing Cloud
+    <span class="appname">Campaign Analytics</span>
+  </div>
+  <div class="gsearch">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input type="text" placeholder="Search campaigns, leads, reports...">
+  </div>
+  <div class="gicons">
+    <div class="gicon" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="badge"></span></div>
+    <div class="gicon" title="Help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 114 2c-.6.6-1.5 1-1.5 2.2"/><circle cx="12" cy="17" r=".6" fill="currentColor" stroke="none"/></svg></div>
+    <div class="gicon" title="Setup"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.6V21a2 2 0 11-4 0v-.2a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.6-1H3a2 2 0 110-4h.2a1.7 1.7 0 001.6-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.6V3a2 2 0 114 0v.2a1.7 1.7 0 001 1.6 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.6 1H21a2 2 0 110 4h-.2a1.7 1.7 0 00-1.6 1z"/></svg></div>
+    <div class="avatar">SC</div>
+  </div>
+</div>
+
+<!-- APP TAB NAV -->
+<div class="appnav">
+  <a href="#">Home</a>
+  <a href="#">Campaigns</a>
+  <a href="#">Leads</a>
+  <a href="#">Opportunities</a>
+  <a href="#">Reports</a>
+  <a href="#" class="active">Dashboards</a>
+</div>
+
+<!-- PAGE HEADER -->
+<div class="pagehead">
+  <div class="pagehead-inner">
+    <div class="breadcrumb"><a href="#">Dashboards</a> &nbsp;›&nbsp; <a href="#">Campaign Performance</a></div>
+    <div class="titlerow">
+      <div>
+        <h1><span class="dicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span> 2026 Product Launch — Campaign Performance</h1>
+        <div class="meta">In folder: Marketing Dashboards &nbsp;·&nbsp; Created by Scott Clinton &nbsp;·&nbsp; Viewing as: Marketing Team</div>
+      </div>
+      <div class="actions">
+        <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 10-3.5 7.1M21 5v6h-6"/></svg> Refresh</button>
+        <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a3 3 0 10-2.8-4H15a3 3 0 105.8 1M6 12a3 3 0 100 0m0 0a3 3 0 105.8-1M8.8 13.8l6.4 3.7M15.2 6.5L8.8 10.2"/></svg> Subscribe</button>
+        <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> Edit</button>
+        <button class="btn btn-brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> New</button>
+      </div>
+    </div>
+    <div class="filterrow">
+      <div class="select">Campaign: <strong>2026 Product Launch</strong> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></div>
+      <div class="select">Date Range: <strong>Jul 1 – Sep 30, 2026</strong> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></div>
+      <div class="select">Compare To: <strong>Previous Period</strong> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></div>
+      <div class="refresh-note">Last refreshed: Today 9:41 AM &nbsp;·&nbsp; Viewing: <a href="#">Table view</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- KPI TILES -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="lbl">Total Spend</div>
+      <div class="val">$184.3K</div>
+      <div class="delta up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>12% <span class="vs">of $250K budget</span></div>
+    </div>
+    <div class="kpi">
+      <div class="lbl">Leads Generated</div>
+      <div class="val">3,842</div>
+      <div class="delta up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>18.4% <span class="vs">vs prior period</span></div>
+    </div>
+    <div class="kpi">
+      <div class="lbl">MQLs</div>
+      <div class="val">1,120</div>
+      <div class="delta up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>9.7% <span class="vs">vs prior period</span></div>
+    </div>
+    <div class="kpi">
+      <div class="lbl">Opportunities</div>
+      <div class="val">214</div>
+      <div class="delta down"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>3.1% <span class="vs">vs prior period</span></div>
+    </div>
+    <div class="kpi">
+      <div class="lbl">Pipeline Generated</div>
+      <div class="val">$4.8M</div>
+      <div class="delta up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>22.6% <span class="vs">vs prior period</span></div>
+    </div>
+    <div class="kpi">
+      <div class="lbl">Campaign ROI</div>
+      <div class="val">551%</div>
+      <div class="delta up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>47pt <span class="vs">vs prior period</span></div>
+    </div>
+  </div>
+
+  <!-- ROW: donut + funnel -->
+  <div class="grid2">
+    <div class="widget">
+      <div class="widget-head"><h2>Leads by Channel</h2><div class="wmenu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
+      <div class="widget-body">
+        <div class="viz-root" id="donutRoot" style="display:flex; align-items:center; gap:24px; flex-wrap:wrap;">
+          <svg id="donutSvg" viewBox="0 0 180 180" width="180" height="180" style="flex:none;"></svg>
+          <div class="legend" id="donutLegend" style="flex-direction:column; gap:10px; margin-top:0;"></div>
+          <div class="viz-tooltip" id="donutTip"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="widget">
+      <div class="widget-head"><h2>Campaign Funnel</h2><div class="wmenu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
+      <div class="widget-body">
+        <div class="viz-root" id="funnelRoot">
+          <svg id="funnelSvg" viewBox="0 0 480 220" width="100%" height="220"></svg>
+          <div class="viz-tooltip" id="funnelTip"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW: line chart full width -->
+  <div class="widget widget-full">
+    <div class="widget-head"><h2>Leads Generated Over Time — Weekly</h2><div class="wmenu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
+    <div class="widget-body">
+      <div class="viz-root" id="lineRoot">
+        <svg id="lineSvg" viewBox="0 0 1180 260" width="100%" height="260"></svg>
+        <div class="viz-tooltip" id="lineTip"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW: stacked bar member status -->
+  <div class="widget widget-full">
+    <div class="widget-head"><h2>Campaign Member Status by Channel</h2><div class="wmenu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
+    <div class="widget-body">
+      <div class="viz-root" id="stackRoot">
+        <svg id="stackSvg" viewBox="0 0 1180 240" width="100%" height="240"></svg>
+        <div class="legend" id="stackLegend"></div>
+        <div class="viz-tooltip" id="stackTip"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW: table + meter -->
+  <div class="grid2">
+    <div class="widget" style="grid-column:1 / -1;">
+      <div class="widget-head"><h2>Channel Performance</h2><div class="wmenu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
+      <div class="widget-body" style="padding:0;">
+        <table class="data">
+          <thead><tr>
+            <th>Channel</th><th class="num">Leads</th><th class="num">MQLs</th><th class="num">Conv. %</th>
+            <th class="num">Spend</th><th class="num">Cost / Lead</th><th class="num">Pipeline</th><th class="num">ROI</th>
+          </tr></thead>
+          <tbody id="channelTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="widget">
+      <div class="widget-head"><h2>Budget Utilization</h2><div class="wmenu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
+      <div class="widget-body">
+        <div class="meter-track"><div class="meter-fill" style="width:73.7%;"></div></div>
+        <div class="meter-labels"><span><strong>$184,300</strong> spent</span><span>$250,000 budget</span></div>
+      </div>
+    </div>
+    <div class="widget">
+      <div class="widget-head"><h2>Pipeline Coverage</h2><div class="wmenu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
+      <div class="widget-body">
+        <div class="meter-track" style="background:var(--seq-150);"><div class="meter-fill" style="width:100%; background:var(--success);"></div></div>
+        <div class="meter-labels"><span><strong>$4.8M</strong> pipeline generated</span><span>Target: $3.5M (137%)</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>Prototype UI concept for internal review — mimics Salesforce Lightning dashboard patterns using sample data. Not affiliated with or a product of Salesforce.com, Inc.</footer>
+
+<script>
+(function(){
+  var channels = [
+    { name:'Paid Search',    color:'var(--s1)', hex:'#2a78d6', leads:1240, mqls:398, spend:68200, pipeline:1620000 },
+    { name:'Email Nurture',  color:'var(--s2)', hex:'#008300', leads: 980, mqls:312, spend:12400, pipeline:1180000 },
+    { name:'Webinar',        color:'var(--s3)', hex:'#e87ba4', leads: 612, mqls:210, spend:31500, pipeline: 940000 },
+    { name:'Social Ads',     color:'var(--s4)', hex:'#eda100', leads: 705, mqls:142, spend:52800, pipeline: 610000 },
+    { name:'Organic / Direct', color:'var(--s5)', hex:'#1baf7a', leads:305, mqls: 58, spend: 19400, pipeline: 450000 }
+  ];
+
+  function fmtMoney(n){
+    if (n >= 1000000) return '$' + (n/1000000).toFixed(1) + 'M';
+    if (n >= 1000) return '$' + Math.round(n/1000) + 'K';
+    return '$' + n;
+  }
+  function fmtNum(n){ return n.toLocaleString('en-US'); }
+
+  /* ---------- DONUT: Leads by Channel ---------- */
+  (function(){
+    var svg = document.getElementById('donutSvg');
+    var legend = document.getElementById('donutLegend');
+    var tip = document.getElementById('donutTip');
+    var total = channels.reduce(function(a,c){ return a + c.leads; }, 0);
+    var cx=90, cy=90, r=70, rInner=44;
+    var angle = -90;
+    var ns = 'http://www.w3.org/2000/svg';
+
+    channels.forEach(function(c){
+      var frac = c.leads / total;
+      var sweep = frac * 360;
+      var a0 = angle * Math.PI/180, a1 = (angle+sweep) * Math.PI/180;
+      var x0 = cx + r*Math.cos(a0), y0 = cy + r*Math.sin(a0);
+      var x1 = cx + r*Math.cos(a1), y1 = cy + r*Math.sin(a1);
+      var xi0 = cx + rInner*Math.cos(a1), yi0 = cy + rInner*Math.sin(a1);
+      var xi1 = cx + rInner*Math.cos(a0), yi1 = cy + rInner*Math.sin(a0);
+      var large = sweep > 180 ? 1 : 0;
+      var d = 'M'+x0+','+y0+' A'+r+','+r+' 0 '+large+' 1 '+x1+','+y1+' L'+xi0+','+yi0+' A'+rInner+','+rInner+' 0 '+large+' 0 '+xi1+','+yi1+' Z';
+      var path = document.createElementNS(ns,'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', c.hex);
+      path.style.cursor = 'pointer';
+      path.addEventListener('mousemove', function(e){
+        var rect = svg.parentElement.getBoundingClientRect();
+        tip.innerHTML = '<strong>'+c.name+'</strong><br>'+fmtNum(c.leads)+' leads ('+(frac*100).toFixed(1)+'%)';
+        tip.style.left = (e.clientX - rect.left + 12) + 'px';
+        tip.style.top = (e.clientY - rect.top - 10) + 'px';
+        tip.classList.add('show');
+      });
+      path.addEventListener('mouseleave', function(){ tip.classList.remove('show'); });
+      svg.appendChild(path);
+      angle += sweep;
+    });
+
+    var centerText1 = document.createElementNS(ns,'text');
+    centerText1.setAttribute('x', cx); centerText1.setAttribute('y', cy-2);
+    centerText1.setAttribute('text-anchor','middle'); centerText1.setAttribute('font-size','20'); centerText1.setAttribute('font-weight','700'); centerText1.setAttribute('fill','#181818');
+    centerText1.textContent = fmtNum(total);
+    svg.appendChild(centerText1);
+    var centerText2 = document.createElementNS(ns,'text');
+    centerText2.setAttribute('x', cx); centerText2.setAttribute('y', cy+16);
+    centerText2.setAttribute('text-anchor','middle'); centerText2.setAttribute('font-size','10.5'); centerText2.setAttribute('fill','#706E6B');
+    centerText2.textContent = 'Total Leads';
+    svg.appendChild(centerText2);
+
+    channels.forEach(function(c){
+      var frac = ((c.leads/total)*100).toFixed(1);
+      var item = document.createElement('div');
+      item.className = 'legend-item';
+      item.innerHTML = '<span class="legend-dot" style="background:'+c.hex+'"></span><span><strong style="color:#181818">'+c.name+'</strong><br><span style="color:#706E6B">'+fmtNum(c.leads)+' leads · '+frac+'%</span></span>';
+      legend.appendChild(item);
+    });
+  })();
+
+  /* ---------- FUNNEL ---------- */
+  (function(){
+    var svg = document.getElementById('funnelSvg');
+    var tip = document.getElementById('funnelTip');
+    var ns = 'http://www.w3.org/2000/svg';
+    var stages = [
+      { label:'Sent',        value:18400, color:'var(--seq-150)', hex:'#b7d3f6' },
+      { label:'Responded',   value: 5210, color:'var(--seq-250)', hex:'#86b6ef' },
+      { label:'MQL',         value: 1120, color:'var(--seq-350)', hex:'#5598e7' },
+      { label:'SQL',         value:  412, color:'var(--seq-450)', hex:'#2a78d6' },
+      { label:'Opportunity', value:  214, color:'var(--seq-550)', hex:'#1c5cab' },
+      { label:'Won',         value:   38, color:'var(--seq-650)', hex:'#104281' }
+    ];
+    var maxV = stages[0].value;
+    var top = 8, rowH = 30, gap = 4, left = 130, right = 470;
+    stages.forEach(function(s, i){
+      var y = top + i*(rowH+gap);
+      var w = (s.value/maxV) * (right-left);
+      var x = left;
+      var rect = document.createElementNS(ns,'rect');
+      rect.setAttribute('x', x); rect.setAttribute('y', y);
+      rect.setAttribute('width', Math.max(w,2)); rect.setAttribute('height', rowH);
+      rect.setAttribute('rx', 3);
+      rect.setAttribute('fill', s.hex);
+      rect.style.cursor='pointer';
+      var pctPrev = i===0 ? 100 : (s.value/stages[i-1].value*100);
+      rect.addEventListener('mousemove', function(e){
+        var r = svg.parentElement.getBoundingClientRect();
+        tip.innerHTML = '<strong>'+s.label+'</strong><br>'+fmtNum(s.value)+(i>0 ? ' · '+pctPrev.toFixed(1)+'% of '+stages[i-1].label : '');
+        tip.style.left = (e.clientX - r.left + 12) + 'px';
+        tip.style.top = (e.clientY - r.top - 10) + 'px';
+        tip.classList.add('show');
+      });
+      rect.addEventListener('mouseleave', function(){ tip.classList.remove('show'); });
+      svg.appendChild(rect);
+
+      var lbl = document.createElementNS(ns,'text');
+      lbl.setAttribute('x', left-10); lbl.setAttribute('y', y+rowH/2+4);
+      lbl.setAttribute('text-anchor','end'); lbl.setAttribute('font-size','12'); lbl.setAttribute('fill','#3E3E3C');
+      lbl.textContent = s.label;
+      svg.appendChild(lbl);
+
+      var val = document.createElementNS(ns,'text');
+      val.setAttribute('x', x + w + 10); val.setAttribute('y', y+rowH/2+4);
+      val.setAttribute('font-size','12'); val.setAttribute('font-weight','700'); val.setAttribute('fill','#181818');
+      val.textContent = fmtNum(s.value);
+      svg.appendChild(val);
+    });
+  })();
+
+  /* ---------- LINE CHART: Leads over time ---------- */
+  (function(){
+    var svg = document.getElementById('lineSvg');
+    var tip = document.getElementById('lineTip');
+    var ns = 'http://www.w3.org/2000/svg';
+    var weeks = ['Jul 1','Jul 8','Jul 15','Jul 22','Jul 29','Aug 5','Aug 12','Aug 19','Aug 26','Sep 2','Sep 9','Sep 16','Sep 23'];
+    var values = [140,205,260,310,295,340,380,410,455,420,470,510,490];
+    var padL=44, padR=20, padT=16, padB=32;
+    var w = 1180, h = 260;
+    var plotW = w - padL - padR, plotH = h - padT - padB;
+    var maxV = 600;
+    function xAt(i){ return padL + (i/(values.length-1)) * plotW; }
+    function yAt(v){ return padT + plotH - (v/maxV)*plotH; }
+
+    // gridlines + y labels
+    [0,150,300,450,600].forEach(function(g){
+      var y = yAt(g);
+      var line = document.createElementNS(ns,'line');
+      line.setAttribute('x1',padL); line.setAttribute('x2', w-padR); line.setAttribute('y1',y); line.setAttribute('y2',y);
+      line.setAttribute('stroke','#E5E5E5'); line.setAttribute('stroke-width','1');
+      svg.appendChild(line);
+      var lbl = document.createElementNS(ns,'text');
+      lbl.setAttribute('x', padL-8); lbl.setAttribute('y', y+4); lbl.setAttribute('text-anchor','end');
+      lbl.setAttribute('font-size','11'); lbl.setAttribute('fill','#706E6B');
+      lbl.textContent = g;
+      svg.appendChild(lbl);
+    });
+
+    // area fill
+    var areaPts = 'M'+xAt(0)+','+yAt(0);
+    values.forEach(function(v,i){ areaPts += ' L'+xAt(i)+','+yAt(v); });
+    areaPts += ' L'+xAt(values.length-1)+','+yAt(0)+' Z';
+    var area = document.createElementNS(ns,'path');
+    area.setAttribute('d', areaPts); area.setAttribute('fill', '#2a78d6'); area.setAttribute('opacity','0.1');
+    svg.appendChild(area);
+
+    // line
+    var linePts = values.map(function(v,i){ return xAt(i)+','+yAt(v); }).join(' L');
+    var line = document.createElementNS(ns,'path');
+    line.setAttribute('d', 'M'+linePts);
+    line.setAttribute('fill','none'); line.setAttribute('stroke','#2a78d6'); line.setAttribute('stroke-width','2');
+    line.setAttribute('stroke-linecap','round'); line.setAttribute('stroke-linejoin','round');
+    svg.appendChild(line);
+
+    // x labels (every other week to avoid crowding)
+    weeks.forEach(function(wk,i){
+      if (i % 2 !== 0 && i !== weeks.length-1) return;
+      var lbl = document.createElementNS(ns,'text');
+      lbl.setAttribute('x', xAt(i)); lbl.setAttribute('y', h-10); lbl.setAttribute('text-anchor','middle');
+      lbl.setAttribute('font-size','11'); lbl.setAttribute('fill','#706E6B');
+      lbl.textContent = wk;
+      svg.appendChild(lbl);
+    });
+
+    // end label
+    var endLbl = document.createElementNS(ns,'text');
+    endLbl.setAttribute('x', xAt(values.length-1)-6); endLbl.setAttribute('y', yAt(values[values.length-1])-10);
+    endLbl.setAttribute('text-anchor','end'); endLbl.setAttribute('font-size','12'); endLbl.setAttribute('font-weight','700'); endLbl.setAttribute('fill','#181818');
+    endLbl.textContent = values[values.length-1] + ' leads';
+    svg.appendChild(endLbl);
+
+    // markers + hover
+    values.forEach(function(v,i){
+      var dot = document.createElementNS(ns,'circle');
+      dot.setAttribute('cx', xAt(i)); dot.setAttribute('cy', yAt(v)); dot.setAttribute('r', 4);
+      dot.setAttribute('fill','#2a78d6'); dot.setAttribute('stroke','#fff'); dot.setAttribute('stroke-width','2');
+      svg.appendChild(dot);
+
+      var hit = document.createElementNS(ns,'circle');
+      hit.setAttribute('cx', xAt(i)); hit.setAttribute('cy', yAt(v)); hit.setAttribute('r', 12);
+      hit.setAttribute('fill','transparent'); hit.style.cursor='pointer';
+      hit.addEventListener('mousemove', function(e){
+        var r = svg.parentElement.getBoundingClientRect();
+        tip.innerHTML = '<strong>Week of '+weeks[i]+'</strong><br>'+v+' leads';
+        tip.style.left = (e.clientX - r.left + 12) + 'px';
+        tip.style.top = (e.clientY - r.top - 10) + 'px';
+        tip.classList.add('show');
+      });
+      hit.addEventListener('mouseleave', function(){ tip.classList.remove('show'); });
+      svg.appendChild(hit);
+    });
+  })();
+
+  /* ---------- STACKED BAR: Member Status by Channel ---------- */
+  (function(){
+    var svg = document.getElementById('stackSvg');
+    var tip = document.getElementById('stackTip');
+    var legendEl = document.getElementById('stackLegend');
+    var ns = 'http://www.w3.org/2000/svg';
+    var segs = [
+      { key:'sent', label:'Sent', hex:'#b7d3f6' },
+      { key:'responded', label:'Responded', hex:'#5598e7' },
+      { key:'mql', label:'MQL', hex:'#eda100' },
+      { key:'opportunity', label:'Opportunity', hex:'#eb6834' },
+      { key:'won', label:'Won', hex:'#2E844A' }
+    ];
+    var data = [
+      { channel:'Paid Search',   sent:6200, responded:1900, mql:398, opportunity:120, won:14 },
+      { channel:'Email Nurture', sent:5400, responded:1650, mql:312, opportunity: 88, won:12 },
+      { channel:'Webinar',       sent:2800, responded: 920, mql:210, opportunity: 58, won: 6 },
+      { channel:'Social Ads',    sent:3100, responded: 560, mql:142, opportunity: 32, won: 4 },
+      { channel:'Organic/Direct',sent: 900, responded: 180, mql: 58, opportunity: 16, won: 2 }
+    ];
+    var padL=110, padR=20, padT=10, padB=28;
+    var w=1180, h=240;
+    var plotW = w-padL-padR, plotH = h-padT-padB;
+    var maxTotal = Math.max.apply(null, data.map(function(d){ return d.sent; })) * 1.05;
+    var rowH = 30, gap = 12;
+    var barH = 20;
+
+    data.forEach(function(d, ri){
+      var y = padT + ri*(rowH+gap);
+      var xCursor = padL;
+      segs.forEach(function(s){
+        var val = d[s.key];
+        var segW = (val/maxTotal) * plotW;
+        var rect = document.createElementNS(ns,'rect');
+        rect.setAttribute('x', xCursor); rect.setAttribute('y', y);
+        rect.setAttribute('width', Math.max(segW-2,0)); rect.setAttribute('height', barH);
+        rect.setAttribute('fill', s.hex);
+        rect.style.cursor='pointer';
+        rect.addEventListener('mousemove', function(e){
+          var r = svg.parentElement.getBoundingClientRect();
+          tip.innerHTML = '<strong>'+d.channel+' — '+s.label+'</strong><br>'+fmtNum(val);
+          tip.style.left = (e.clientX - r.left + 12) + 'px';
+          tip.style.top = (e.clientY - r.top - 10) + 'px';
+          tip.classList.add('show');
+        });
+        rect.addEventListener('mouseleave', function(){ tip.classList.remove('show'); });
+        svg.appendChild(rect);
+        xCursor += segW;
+      });
+
+      var lbl = document.createElementNS(ns,'text');
+      lbl.setAttribute('x', padL-10); lbl.setAttribute('y', y+barH/2+4); lbl.setAttribute('text-anchor','end');
+      lbl.setAttribute('font-size','12'); lbl.setAttribute('fill','#3E3E3C');
+      lbl.textContent = d.channel;
+      svg.appendChild(lbl);
+    });
+
+    segs.forEach(function(s){
+      var item = document.createElement('div');
+      item.className = 'legend-item';
+      item.innerHTML = '<span class="legend-dot" style="background:'+s.hex+'"></span>'+s.label;
+      legendEl.appendChild(item);
+    });
+  })();
+
+  /* ---------- CHANNEL TABLE ---------- */
+  (function(){
+    var tbody = document.getElementById('channelTableBody');
+    channels.forEach(function(c){
+      var conv = (c.mqls / c.leads * 100).toFixed(1);
+      var cpl = Math.round(c.spend / c.leads);
+      var roi = Math.round((c.pipeline - c.spend) / c.spend * 100);
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><span class="chdot" style="background:'+c.hex+'"></span><span class="name">'+c.name+'</span></td>'+
+        '<td class="num">'+fmtNum(c.leads)+'</td>'+
+        '<td class="num">'+fmtNum(c.mqls)+'</td>'+
+        '<td class="num '+(conv>=25?'pct-good':'')+'">'+conv+'%</td>'+
+        '<td class="num">'+fmtMoney(c.spend)+'</td>'+
+        '<td class="num">$'+cpl+'</td>'+
+        '<td class="num">'+fmtMoney(c.pipeline)+'</td>'+
+        '<td class="num pct-good">'+roi+'%</td>';
+      tbody.appendChild(tr);
+    });
+  })();
+})();
+</script>
+
+</body>
+</html>
