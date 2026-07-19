@@ -271,7 +271,7 @@ add_text(slide2, cx+0.16, row2_y+0.83, card3_w-0.32, 0.26, "Avg Weekly Growth: +
 leads_chart_data = CategoryChartData()
 leads_chart_data.categories = ['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12','W13']
 leads_chart_data.add_series('Leads', (140,205,260,310,295,340,380,410,455,420,470,510,490))
-gframe = slide2.shapes.add_chart(XL_CHART_TYPE.LINE_MARKERS, Inches(cx+0.1), Inches(row2_y+1.2), Inches(card3_w-0.2), Inches(2.15), leads_chart_data)
+gframe = slide2.shapes.add_chart(XL_CHART_TYPE.LINE_MARKERS, Inches(cx+0.1), Inches(row2_y+1.2), Inches(card3_w-0.2), Inches(2.0), leads_chart_data)
 lc = gframe.chart
 lc.has_legend = False
 lc.has_title = False
@@ -292,8 +292,13 @@ val_ax.has_major_gridlines = True
 val_ax.major_gridlines.format.line.color.rgb = LINE
 val_ax.major_gridlines.format.line.width = Pt(0.5)
 
-add_text(slide2, cx+0.16, row2_y+3.5, card3_w-0.32, 0.24, "TOP CHANNEL", 9, MUTED, bold=True, spacing=10)
-add_text(slide2, cx+0.16, row2_y+3.75, card3_w-0.32, 0.28, "Paid Search — 1,040 leads", 10.5, INK)
+add_text(slide2, cx+0.16, row2_y+3.32, card3_w-0.32, 0.22, "TOP 3 CHANNELS", 9, MUTED, bold=True, spacing=10)
+top_channels = [("Paid Search", "1,040"), ("Email Nurture", "980"), ("Webinar", "612")]
+tcy = row2_y + 3.56
+for name, leads_n in top_channels:
+    add_text(slide2, cx+0.16, tcy, card3_w-1.1, 0.22, name, 9.5, INK)
+    add_text(slide2, cx+card3_w-1.0, tcy, 0.84, 0.22, leads_n, 9.5, INK, bold=True, align=PP_ALIGN.RIGHT)
+    tcy += 0.225
 
 # ---- Card 2: Opportunity Pipeline ----
 cx = xs[1]
